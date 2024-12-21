@@ -1,9 +1,12 @@
 """Config flow to configure MyHome."""
 import asyncio
 import ipaddress
+import logging
 import re
 import os
 from typing import Dict, Optional
+import serial.tools.list_ports
+import serial_asyncio
 
 import async_timeout
 from voluptuous import (
@@ -14,6 +17,7 @@ from voluptuous import (
     In,
     Range,
     IsFile,
+    UNDEFINED,
 )
 from homeassistant.config_entries import (
     CONN_CLASS_LOCAL_PUSH,
@@ -32,7 +36,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import callback
 from homeassistant.helpers import device_registry as dr
-from OWNd.connection import OWNGateway, OWNSession
+from OWNd.connection import OWNGateway, OWNSession,ZigbeeOWNGateway, zigbeeSession
 from OWNd.discovery import find_gateways
 
 from .const import (
@@ -50,9 +54,13 @@ from .const import (
     CONF_GENERATE_EVENTS,
     DOMAIN,
     LOGGER,
+    CONF_ZIGBEE,
+    CONF_SERIAL_PORT,
 )
 from .gateway import MyHOMEGatewayHandler
 
+CONF_DEVICE_PATH = "path"
+CONF_MANUAL_PATH = "Enter Manually"
 
 class MACAddress:
     def __init__(self, mac: str):
@@ -93,6 +101,8 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
         # Check if user chooses manual entry
         if user_input is not None and user_input["serial"] == "00:00:00:00:00:00":
             return await self.async_step_custom()
+        if user_input is not None and user_input["serial"] == "DE:AD:00:00:BE:EF":
+            return await self.async_step_choose_serial_port()
 
         if user_input is not None and self.discovered_gateways is not None and user_input["serial"] in self.discovered_gateways:
             self.gateway_handler = await OWNGateway.build_from_discovery_info(self.discovered_gateways[user_input["serial"]])
@@ -126,12 +136,86 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
                     Required("serial"): In(
                         {
                             **{gateway["serialNumber"]: f"{gateway['modelName']} Gateway ({gateway['address']})" for gateway in local_gateways},
-                            "00:00:00:00:00:00": "Custom",
+                            "00:00:00:00:00:00": "Customize MyHome SCS",
+                            "DE:AD:00:00:BE:EF": "Configure MyHome Play (ZigBee)",
                         }
                     )
                 }
             ),
         )
+
+    async def async_step_choose_serial_port(self, user_input=None, errors={}):  # pylint: disable=dangerous-default-value
+        """Choose a serial port."""
+
+        ports = await self.hass.async_add_executor_job(serial.tools.list_ports.comports)
+        list_of_ports = [
+            f"{p}{', s/n: ' + p.serial_number if p.serial_number else ''}"
+            + (f" - {p.manufacturer}" if p.manufacturer else "")
+            for p in ports
+        ]
+
+        if not list_of_ports:
+            return await self.async_step_manual_port_config()
+
+        list_of_ports.append(CONF_MANUAL_PATH)
+
+        if user_input is not None:
+            user_selection = user_input[CONF_DEVICE_PATH]
+            if user_selection == CONF_MANUAL_PATH:
+                return await self.async_step_manual_port_config()
+
+            port = ports[list_of_ports.index(user_selection)]
+            return await self.async_step_check_serial(port.device)
+
+        default_port = CONF_MANUAL_PATH
+        schema = Schema(
+            {
+                Required(CONF_DEVICE_PATH, default=default_port): In(
+                    list_of_ports
+                )
+            }
+        )
+        return self.async_show_form(step_id="choose_serial_port", data_schema=schema)
+
+    async def async_step_manual_port_config(
+        self, user_input = None
+    ):
+        """Enter port settings specific for this type of radio."""
+        errors = {}
+
+        if user_input is not None:
+            port = user_input[CONF_DEVICE_PATH]
+            return await self.async_step_check_serial(port)
+
+        schema = {
+            Required(
+                CONF_DEVICE_PATH, default=UNDEFINED
+            ): str
+        }
+
+        return self.async_show_form(
+            step_id="manual_port_config",
+            data_schema=Schema(schema),
+            errors=errors
+        ) 
+
+    async def async_step_check_serial(self, serialPort : str):
+        """"Last step."""
+        LOGGER.info("Starting Zigbee/OPEN on serial port <%s>", serialPort)
+        portTcp = 20001
+        self.gateway_handler  = await ZigbeeOWNGateway.build_from_discovery_info(
+            {
+                "serialNumber": "DE:AD:00:00:BE:EF",
+                "serialPort": serialPort,
+                "port": portTcp,
+            }
+        )
+        await self.async_set_unique_id(dr.format_mac(self.gateway_handler.serial))
+        zb = zigbeeSession(self.gateway_handler , LOGGER)
+        await zb.connect()
+
+        return await self.async_step_test_connection()
+
 
     async def async_step_custom(self, user_input=None, errors={}):  # pylint: disable=dangerous-default-value
         """Handle manual gateway setup."""
@@ -247,6 +331,8 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
                 CONF_FIRMWARE: gateway.model_number,
                 CONF_MAC: dr.format_mac(gateway.serial),
                 CONF_UDN: gateway.udn,
+                CONF_ZIGBEE: gateway._is_zigbee,
+                CONF_SERIAL_PORT: gateway._serial_port,
             }
             _new_entry_options = {
                 CONF_WORKER_COUNT: self._existing_entry.options[CONF_WORKER_COUNT] if self._existing_entry and CONF_WORKER_COUNT in self._existing_entry.options else 1,

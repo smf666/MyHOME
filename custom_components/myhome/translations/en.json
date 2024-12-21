@@ -32,6 +32,13 @@
           "serialNumber": "MAC address",
           "modelName": "Device type"
         }
+      },
+      "choose_serial_port": {
+          "title": "Select a Serial Port",
+          "data": {
+            "path": "Serial Device Path"
+          },
+          "description": "Select the serial port for your OpenWebNet Zigbee Gateway"
       }
     },
     "error": {

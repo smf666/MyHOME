@@ -1,5 +1,5 @@
 sync_time:
-  name: Syncronize time
+  name: Synchronize time
   description: Syncronize gateway's time to HA local time.
   fields:
     gateway:

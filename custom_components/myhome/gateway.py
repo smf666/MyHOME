@@ -28,7 +28,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.components.climate import DOMAIN as CLIMATE
 
-from OWNd.connection import OWNSession, OWNEventSession, OWNCommandSession, OWNGateway
+from OWNd.connection import OWNSession, OWNEventSession, OWNCommandSession, OWNGateway, ZigbeeOWNGateway, zigbeeSession
 from OWNd.message import (
     OWNMessage,
     OWNLightingEvent,
@@ -55,6 +55,8 @@ from .const import (
     CONF_MANUFACTURER,
     CONF_MANUFACTURER_URL,
     CONF_UDN,
+    CONF_SERIAL_PORT,
+    CONF_ZIGBEE,
     CONF_SHORT_PRESS,
     CONF_SHORT_RELEASE,
     CONF_LONG_PRESS,
@@ -87,10 +89,14 @@ class MyHOMEGatewayHandler:
             "modelNumber": config_entry.data[CONF_FIRMWARE],
             "serialNumber": config_entry.data[CONF_MAC],
             "UDN": config_entry.data[CONF_UDN],
+            "serialPort": config_entry.data[CONF_SERIAL_PORT],
+            "isZigbee": config_entry.data[CONF_ZIGBEE],
         }
         self.hass = hass
         self.config_entry = config_entry
         self.generate_events = generate_events
+        if config_entry.data[CONF_ZIGBEE]:
+            self.gateway = ZigbeeOWNGateway(build_info)
         self.gateway = OWNGateway(build_info)
         self._terminate_listener = False
         self._terminate_sender = False
@@ -128,6 +134,9 @@ class MyHOMEGatewayHandler:
         return self.gateway.firmware
 
     async def test(self) -> Dict:
+        if self.gateway.is_zigbee:
+            zb = zigbeeSession(self.gateway , LOGGER)
+            await zb.connect()
         return await OWNSession(gateway=self.gateway, logger=LOGGER).test_connection()
 
     async def listening_loop(self):
@@ -261,7 +270,27 @@ class MyHOMEGatewayHandler:
                                 self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][LIGHT][message.entity][CONF_ENTITIES][LIGHT],
                                 MyHOMEEntity,
                             ):
-                                await self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][LIGHT][message.entity][CONF_ENTITIES][LIGHT].async_update()
+                                for _platform in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS]:
+                                    if _platform != BUTTON and message.entity in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform]:
+                                        for _entity in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES]:
+                                            if (
+                                                isinstance(
+                                                    self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity],
+                                                    MyHOMEEntity,
+                                                )
+                                                and not isinstance(
+                                                    self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity],
+                                                    DisableCommandButtonEntity,
+                                                )
+                                                and not isinstance(
+                                                    self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity],
+                                                    EnableCommandButtonEntity,
+                                                )
+                                            ):
+                                                if self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity].isZigbee():
+                                                    self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity].handle_event(message)
+                                                else:
+                                                    await self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][LIGHT][message.entity][CONF_ENTITIES][LIGHT].async_update()
                         else:
                             for _platform in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS]:
                                 if _platform != BUTTON and message.entity in self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform]:
@@ -281,7 +310,9 @@ class MyHOMEGatewayHandler:
                                             )
                                         ):
                                             self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity].handle_event(message)
-
+                                            if _platform == LIGHT and self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity].needUpdate(message):
+                                                await asyncio.sleep(1)
+                                                await self.hass.data[DOMAIN][self.mac][CONF_PLATFORMS][_platform][message.entity][CONF_ENTITIES][_entity].async_update()
                 else:
                     LOGGER.debug(
                         "%s Ignoring translation message `%s`",

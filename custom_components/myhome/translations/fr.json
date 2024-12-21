@@ -6,7 +6,9 @@
       "user": {
         "title": "Choisisez votre serveur \"MyHome\"",
         "data": {
-          "host": "Adresse IP"
+          "host": "Adresse IP",
+          "Customize MyHome SCS" : "Configuration personnaliée MyHome SCS",
+          "Configure MyHome Play (ZigBee)" : "Configuration MyHome Play (Zigbee)"
         }
       },
       "port": {
@@ -32,6 +34,13 @@
           "serialNumber": "Adresse MAC",
           "modelName": "Type de serveur"
         }
+      },
+      "choose_serial_port": {
+        "title": "Sélection du port série",
+        "data": {
+          "path": "Port série"
+        },
+        "description": "Sélectionnez le port série sur lequel est connecté la passerelle OpenWebNet/Zigbee"
       }
     },
     "error": {

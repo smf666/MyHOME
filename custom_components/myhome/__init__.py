@@ -49,7 +49,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _config_file_path = (
         str(entry.options[CONF_FILE_PATH])
         if CONF_FILE_PATH in entry.options
-        else "/config/myhome.yaml"
+        else "config/myhome.yaml"
     )
     _generate_events = (
         entry.options[CONF_GENERATE_EVENTS]
@@ -61,7 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         async with aiofiles.open(_config_file_path, mode="r") as yaml_file:
             _validated_config = config_schema(yaml.safe_load(await yaml_file.read()))
     except FileNotFoundError:
-        LOGGER.error(f"Configartion file '{_config_file_path}' is not present!")
+        LOGGER.error(f"Configuration file '{_config_file_path}' is not present!")
         return False
 
     if entry.data[CONF_MAC] in _validated_config:

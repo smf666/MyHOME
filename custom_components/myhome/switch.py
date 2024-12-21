@@ -103,14 +103,28 @@ class MyHOMESwitch(MyHOMEEntity, SwitchEntity):
         self._attr_name = entity_name
 
         self._interface = interface
-        self._full_where = f"{self._where}#4#{self._interface}" if self._interface is not None else self._where
+        if(self.isZigbee()):
+            self._full_where = f"{self._where}{self._interface}"
+        else:
+            self._full_where = f"{self._where}#4#{self._interface}" if self._interface is not None else self._where
 
-        self._attr_extra_state_attributes = {
-            "A": where[: len(where) // 2],
-            "PL": where[len(where) // 2 :],
-        }
+        if(self.isZigbee()):
+            id = int(where[:len(where) -2])
+            unit = int(where[len(where) -1:])
+            self._attr_extra_state_attributes = {
+                "ID":   f'0x{id:0>8X}',
+                "Unit": f'{unit:02d}'
+            }
+        else:
+            self._attr_extra_state_attributes = {
+                "A": where[: len(where) // 2],
+                "PL": where[len(where) // 2 :],
+            }
         if self._interface is not None:
-            self._attr_extra_state_attributes["Int"] = self._interface
+            if self.isZigbee():
+                self._attr_extra_state_attributes["Int"] = "Zigbee"
+            else:
+                self._attr_extra_state_attributes["Int"] = self._interface
 
         self._attr_device_class = SwitchDeviceClass.OUTLET if device_class.lower() == "outlet" else SwitchDeviceClass.SWITCH
 
@@ -121,6 +135,9 @@ class MyHOMESwitch(MyHOMEEntity, SwitchEntity):
             self._attr_icon = self._off_icon
 
         self._attr_is_on = None
+
+    def isZigbee(self):
+        return self._interface is not None and self._interface == "#9"
 
     async def async_update(self):
         """Update the entity.

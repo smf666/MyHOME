@@ -118,7 +118,10 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
         self._attr_name = entity_name
 
         self._interface = interface
-        self._full_where = f"{self._where}#4#{self._interface}" if self._interface is not None else self._where
+        if(self.isZigbee()):
+            self._full_where = f"{self._where}{self._interface}"
+        else:
+            self._full_where = f"{self._where}#4#{self._interface}" if self._interface is not None else self._where
 
         self._attr_supported_features = 0
         self._attr_supported_color_modes: set[ColorMode] = set()
@@ -132,12 +135,23 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
             self._attr_color_mode = ColorMode.ONOFF
             self._attr_supported_features |= LightEntityFeature.FLASH
 
-        self._attr_extra_state_attributes = {
-            "A": where[: len(where) // 2],
-            "PL": where[len(where) // 2 :],
-        }
+        if(self.isZigbee()):
+            id = int(where[:len(where) -2])
+            unit = int(where[len(where) -1:])
+            self._attr_extra_state_attributes = {
+                "ID":   f'0x{id:0>8X}',
+                "Unit": f'{unit:02d}'
+            }
+        else:
+            self._attr_extra_state_attributes = {
+                "A": where[: len(where) // 2],
+                "PL": where[len(where) // 2 :],
+            }
         if self._interface is not None:
-            self._attr_extra_state_attributes["Int"] = self._interface
+            if self.isZigbee():
+                self._attr_extra_state_attributes["Int"] = "Zigbee"
+            else:
+                self._attr_extra_state_attributes["Int"] = self._interface
 
         self._on_icon = icon_on
         self._off_icon = icon
@@ -149,15 +163,22 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
         self._attr_brightness = None
         self._attr_brightness_pct = None
 
+    def isZigbee(self):
+        return self._interface is not None and self._interface == "#9"
+    
+    def needUpdate(self, message: OWNLightingEvent):
+        return self.isZigbee() and ColorMode.BRIGHTNESS in self._attr_supported_color_modes and message.is_on and message._brightness_preset is None and self._attr_brightness is None
+
     async def async_update(self):
         """Update the entity.
 
         Only used by the generic entity update service.
         """
-        if ColorMode.BRIGHTNESS in self._attr_supported_color_modes:
+        if ColorMode.BRIGHTNESS in self._attr_supported_color_modes and not self.isZigbee():
             await self._gateway_handler.send_status_request(OWNLightingCommand.get_brightness(self._full_where))
         else:
-            await self._gateway_handler.send_status_request(OWNLightingCommand.status(self._full_where))
+            if self._attr_is_on is None or self._attr_is_on:
+                await self._gateway_handler.send_status_request(OWNLightingCommand.status(self._full_where))
 
     async def async_turn_on(self, **kwargs):
         """Turn the device on."""
@@ -174,26 +195,31 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
             if ATTR_BRIGHTNESS in kwargs or ATTR_BRIGHTNESS_PCT in kwargs:
                 _percent_brightness = eight_bits_to_percent(kwargs[ATTR_BRIGHTNESS]) if ATTR_BRIGHTNESS in kwargs else None
                 _percent_brightness = kwargs[ATTR_BRIGHTNESS_PCT] if ATTR_BRIGHTNESS_PCT in kwargs else _percent_brightness
-
                 if _percent_brightness == 0:
                     return await self.async_turn_off(**kwargs)
                 else:
+                    self._attr_brightness_pct = (_percent_brightness +4) // 10
+                    if self._attr_brightness_pct < 2:
+                        self._attr_brightness_pct = 2
+                    self._attr_brightness_pct = self._attr_brightness_pct * 10
+                    self._attr_brightness = percent_to_eight_bits(self._attr_brightness_pct)
                     return (
                         await self._gateway_handler.send(
                             OWNLightingCommand.set_brightness(
                                 self._full_where,
                                 _percent_brightness,
-                                int(kwargs[ATTR_TRANSITION]),
+                                int(kwargs[ATTR_TRANSITION],
+                                self.isZigbee())
                             )
                         )
                         if ATTR_TRANSITION in kwargs
-                        else await self._gateway_handler.send(OWNLightingCommand.set_brightness(self._full_where, _percent_brightness))
+                        else await self._gateway_handler.send(OWNLightingCommand.set_brightness(self._full_where, _percent_brightness, 0, self.isZigbee()))
                     )
             else:
                 return await self._gateway_handler.send(OWNLightingCommand.switch_on(self._full_where, int(kwargs[ATTR_TRANSITION])))
         else:
             await self._gateway_handler.send(OWNLightingCommand.switch_on(self._full_where))
-            if ColorMode.BRIGHTNESS in self._attr_supported_color_modes:
+            if ColorMode.BRIGHTNESS in self._attr_supported_color_modes and not self.isZigbee():
                 await self.async_update()
 
     async def async_turn_off(self, **kwargs):
@@ -221,6 +247,11 @@ class MyHOMELight(MyHOMEEntity, LightEntity):
         if ColorMode.BRIGHTNESS in self._attr_supported_color_modes and message.brightness is not None:
             self._attr_brightness_pct = message.brightness
             self._attr_brightness = percent_to_eight_bits(message.brightness)
+
+        if self.isZigbee() and ColorMode.BRIGHTNESS in self._attr_supported_color_modes:
+            if message._brightness_preset is not None:
+                self._attr_brightness_pct = message._brightness_preset * 10
+                self._attr_brightness = percent_to_eight_bits(self._attr_brightness_pct)
 
         if self._off_icon is not None and self._on_icon is not None:
             self._attr_icon = self._on_icon if self._attr_is_on else self._off_icon

@@ -52,6 +52,7 @@ from .const import (
     CONF_COOLING_SUPPORT,
     CONF_STANDALONE,
     CONF_CENTRAL,
+    CONF_DURATION,
 )
 
 
@@ -118,6 +119,20 @@ class Group(object):
     def __repr__(self):
         return "Where(%s, msg=%r)" % ("String", self.msg)
 
+class Zigbee(object):
+    def __init__(self, msg=None):
+        self.msg = msg
+
+    def __call__(self, v):
+        if type(v) == str and v.isdigit():
+            return v
+        else:
+            raise Invalid(f"Invalid Zigbee WHERE {v}, it must be a string like '[0-99999999]'.")
+
+    def __repr__(self):
+        return "Where(%s, msg=%r)" % ("String", self.msg)
+
+
 
 class PointToPoint(object):
     def __init__(self, msg=None):
@@ -165,6 +180,8 @@ class BusInterface(object):
             if int(v) > 15:
                 raise Invalid(f"Invalid Bus Interface number {v}, it must be between 00 and 15.")
         elif v is not None:
+            if type(v) == str and v.startswith("#9") and len(v) == 2:
+                return v
             raise Invalid(f"Invalid Bus Interface number {v}, it must be a string of 2 digits.")
         return v
 
@@ -215,7 +232,7 @@ class MyHomeDeviceSchema(Schema):
             if CONF_WHERE in data[device]:
                 _new_key = (
                     f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}#4#{data[device][CONF_BUS_INTERFACE]}"
-                    if CONF_BUS_INTERFACE in data[device] and data[device][CONF_BUS_INTERFACE] is not None
+                    if CONF_BUS_INTERFACE in data[device] and data[device][CONF_BUS_INTERFACE] is not None and data[device][CONF_BUS_INTERFACE] != "#9" 
                     else f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}"
                 )
                 _rekeyed_data[_new_key] = data[device]
@@ -287,7 +304,7 @@ light_schema = MyHomeDeviceSchema(
         Required(str): {
             Optional(CONF_WHO, default="1"): "1",
             Required(CONF_WHERE): All(
-                Coerce(str), Any(General(), Area(), Group(), PointToPoint(), msg="Invalid <WHERE>, expecting a valid General, Area, Group or Point-to-Point <WHERE>")
+                Coerce(str), Any(General(), Area(), Group(), PointToPoint(), Zigbee(), msg="Invalid <WHERE>, expecting a valid General, Area, Group, Zigbee or Point-to-Point <WHERE>")
             ),
             Optional(CONF_BUS_INTERFACE): All(Coerce(str), BusInterface()),
             Required(CONF_NAME): str,
@@ -306,7 +323,7 @@ switch_schema = MyHomeDeviceSchema(
         Required(str): {
             Optional(CONF_WHO, default="1"): "1",
             Required(CONF_WHERE): All(
-                Coerce(str), Any(General(), Area(), Group(), PointToPoint(), msg="Invalid <WHERE>, expecting a valid General, Area, Group or Point-to-Point <WHERE>")
+                Coerce(str), Any(General(), Area(), Group(), PointToPoint(), Zigbee(), msg="Invalid <WHERE>, expecting a valid General, Area, Group, Zigbee or Point-to-Point <WHERE>")
             ),
             Optional(CONF_BUS_INTERFACE): All(Coerce(str), BusInterface()),
             Required(CONF_NAME): str,
@@ -330,12 +347,13 @@ cover_schema = MyHomeDeviceSchema(
         Required(str): {
             Optional(CONF_WHO, default="2"): "2",
             Required(CONF_WHERE): All(
-                Coerce(str), Any(General(), Area(), Group(), PointToPoint(), msg="Invalid <WHERE>, expecting a valid General, Area, Group or Point-to-Point <WHERE>")
+                Coerce(str), Any(General(), Area(), Group(), PointToPoint(), Zigbee(), msg="Invalid <WHERE>, expecting a valid General, Area, Group, Zigbee or Point-to-Point <WHERE>")
             ),
             Optional(CONF_BUS_INTERFACE): All(Coerce(str), BusInterface()),
             Required(CONF_NAME): str,
             Optional(CONF_ENTITY_NAME): str,
             Optional(CONF_ADVANCED_SHUTTER, default=False): Boolean(),
+            Optional(CONF_DURATION): int,
             Optional(CONF_MANUFACTURER, default="BTicino S.p.A."): str,
             Optional(CONF_DEVICE_MODEL): Coerce(str),
         }

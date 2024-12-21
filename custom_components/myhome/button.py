@@ -36,9 +36,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         return True
 
     _buttons = []
-    _configured_buttons = hass.data[DOMAIN][config_entry.data[CONF_MAC]][
-        CONF_PLATFORMS
-    ][PLATFORM]
+    _configured_buttons = hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_PLATFORMS][PLATFORM]
 
     for _button in _configured_buttons.keys():
         _disable_button = DisableCommandButtonEntity(
@@ -57,7 +55,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             model=_configured_buttons[_button][CONF_DEVICE_MODEL],
             gateway=hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_ENTITY],
         )
-        _buttons.append(_disable_button)
+        #_buttons.append(_disable_button)
 
         _enable_button = EnableCommandButtonEntity(
             hass=hass,
@@ -75,7 +73,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             model=_configured_buttons[_button][CONF_DEVICE_MODEL],
             gateway=hass.data[DOMAIN][config_entry.data[CONF_MAC]][CONF_ENTITY],
         )
-        _buttons.append(_enable_button)
+        #_buttons.append(_enable_button)
 
     async_add_entities(_buttons)
 
@@ -127,11 +125,14 @@ class DisableCommandButtonEntity(ButtonEntity, MyHOMEEntity):
 
         self._attr_unique_id = f"{gateway.mac}-{self._device_id}-disable"
         self._interface = interface
-        self._full_where = (
-            f"{self._where}#4#{self._interface}"
-            if self._interface is not None
-            else self._where
-        )
+        if(interface.startswith("#9")):
+            self._full_where = f"{self._where}{self._interface}"
+        else:
+            self._full_where = (
+                f"{self._where}#4#{self._interface}"
+                if self._interface is not None
+                else self._where
+            )
 
         self._attr_extra_state_attributes = {
             "A": where[: len(where) // 2],
