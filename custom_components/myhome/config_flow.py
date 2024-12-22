@@ -111,6 +111,7 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
                 raise_on_progress=False,
             )
             # We pass user input to link so it will attempt to link right away
+            self.gateway_handler.test()
             return await self.async_step_test_connection()
 
         try:
@@ -211,10 +212,12 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
             }
         )
         await self.async_set_unique_id(dr.format_mac(self.gateway_handler.serial))
-        zb = zigbeeSession(self.gateway_handler , LOGGER)
-        await zb.connect()
-
-        return await self.async_step_test_connection()
+        
+        zbSession = zigbeeSession(self.gateway_handler , LOGGER)
+        await zbSession.connect()
+        ret = await self.async_step_test_connection()
+        await zbSession.close()
+        return ret
 
 
     async def async_step_custom(self, user_input=None, errors={}):  # pylint: disable=dangerous-default-value

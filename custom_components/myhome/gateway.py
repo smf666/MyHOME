@@ -96,7 +96,7 @@ class MyHOMEGatewayHandler:
         self.config_entry = config_entry
         self.generate_events = generate_events
         if config_entry.data[CONF_ZIGBEE]:
-            self.gateway = ZigbeeOWNGateway(build_info)
+            self.zbGateway = ZigbeeOWNGateway(build_info)
         self.gateway = OWNGateway(build_info)
         self._terminate_listener = False
         self._terminate_sender = False
@@ -135,8 +135,8 @@ class MyHOMEGatewayHandler:
 
     async def test(self) -> Dict:
         if self.gateway.is_zigbee:
-            zb = zigbeeSession(self.gateway , LOGGER)
-            await zb.connect()
+            self.zbSession = zigbeeSession(self.gateway , LOGGER)
+            await self.zbSession.connect()
         return await OWNSession(gateway=self.gateway, logger=LOGGER).test_connection()
 
     async def listening_loop(self):
@@ -431,6 +431,11 @@ class MyHOMEGatewayHandler:
         LOGGER.info("%s Closing event listener", self.log_id)
         self._terminate_sender = True
         self._terminate_listener = True
+
+        if self.zbSession is not None:
+            LOGGER.debug("%s Closing Zigbee Session.", self.log_id)
+            await self.zbSession.close()
+            self.zbSession = None
 
         return True
 
