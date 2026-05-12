@@ -216,7 +216,9 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
         zbSession = zigbeeSession(self.gateway_handler , LOGGER)
         await zbSession.connect()
         ret = await self.async_step_test_connection()
+        LOGGER.debug("Test completed")
         await zbSession.close()
+        LOGGER.debug("Zigbee session closed")
         return ret
 
 
