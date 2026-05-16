@@ -407,6 +407,11 @@ class MyHOMEGatewayHandler:
         await _command_session.connect()
 
         while not self._terminate_sender:
+            LOGGER.debug(
+                "%s %s waiting message...",
+                self.name,
+                self.gateway.host
+            )
             task = await self.send_buffer.get()
             LOGGER.debug(
                 "%s %s Message `%s` was successfully unqueued by worker %s.",
@@ -418,8 +423,12 @@ class MyHOMEGatewayHandler:
             await _command_session.send(message=task["message"], is_status_request=task["is_status_request"])
             self.send_buffer.task_done()
 
+        LOGGER.debug(
+             "%s %s Sending worker closing...",
+             self.name,
+             self.gateway.host
+        )
         await _command_session.close()
-
         LOGGER.debug(
             "%s Destroying sending worker %s",
             self.log_id,
