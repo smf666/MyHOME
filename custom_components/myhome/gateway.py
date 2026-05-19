@@ -136,6 +136,8 @@ class MyHOMEGatewayHandler:
     async def test(self) -> Dict:
         if self.gateway.is_zigbee:
             self.zbSession = zigbeeSession(self.gateway , LOGGER)
+            # sleep 20s to workaround problem a speed configuration of serial that failed
+            await asyncio.sleep(20)
             await self.zbSession.connect()
         return await OWNSession(gateway=self.gateway, logger=LOGGER).test_connection()
 
