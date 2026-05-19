@@ -137,9 +137,6 @@ class MyHOMEGatewayHandler:
         if self.gateway.is_zigbee:
             self.zbSession = zigbeeSession(self.gateway , LOGGER)
             await self.zbSession.connect()
-            LOGGER.debug("%s zibgeeSession connected", self.log_id)
-            await asyncio.sleep(20)
-            LOGGER.debug("%s creating OWN session", self.log_id)
         return await OWNSession(gateway=self.gateway, logger=LOGGER).test_connection()
 
     async def listening_loop(self):
