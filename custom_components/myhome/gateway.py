@@ -161,24 +161,14 @@ class MyHOMEGatewayHandler:
                     self.hass.bus.async_fire("myhome_message_event", {"gateway": str(self.gateway.host), "message": str(message)})
 
             if isinstance(message, OWNLightingEvent):
-                if message.is_command:
-                    self.hass.bus.async_fire(
-                        "myhome_command_light_event",
-                        {
-                            "source": message.event_content["where"],
-                            "type": message.message_type,
-                            "event": message.event_content
-                        },                    
-                    )
-                if message.is_toggle:
-                    self.hass.bus.async_fire(
-                        "myhome_toggle_light_event",
-                        {
-                            "source": message.event_content["where"],
-                            "type": message.message_type,
-                            "event": message.event_content
-                        },                    
-                    )
+                self.hass.bus.async_fire(
+                    "myhome_command_light_event",
+                    {
+                        "source": message.event_content["where"],
+                         "type": message.message_type,
+                         "event": message.event_content
+                     },                    
+                )
 
             if not isinstance(message, OWNMessage):
                 LOGGER.warning(
