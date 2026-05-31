@@ -219,6 +219,16 @@ class MyHOMEGatewayHandler:
                                     "event": event,
                                 },
                             )
+                        elif message.state == 32:
+                            event = "toggle"
+                            self.hass.bus.async_fire(
+                                "myhome_cmd_light_event",
+                                {
+                                    "message": str(message),
+                                    "object": int(message.object),
+                                    "event": event,
+                                },
+                            )
                     elif isinstance(message, OWNAutomationEvent):
                         if message.is_general:
                             is_event = True
