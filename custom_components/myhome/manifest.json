@@ -4,8 +4,10 @@
   "name": "MyHOME",
   "version": "0.9.7",
   "config_flow": true,
-  "documentation": "https://github.com/anotherjulien/MyHOME",
-  "issue_tracker": "https://github.com/anotherjulien/MyHOME/issues",
+  "documentation": "https://github.com/smf666/MyHOME",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/smf666/MyHOME/issues",
   "requirements": [
     "OWNd2==0.7.89"
   ],
