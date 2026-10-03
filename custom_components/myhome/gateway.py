@@ -95,6 +95,7 @@ class MyHOMEGatewayHandler:
         self.hass = hass
         self.config_entry = config_entry
         self.generate_events = generate_events
+        self.device_registry_id: str | None = None
         if config_entry.data[CONF_ZIGBEE]:
             self.zbGateway = ZigbeeOWNGateway(build_info)
         self.gateway = OWNGateway(build_info)
