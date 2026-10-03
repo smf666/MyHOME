@@ -141,6 +141,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         sw_version=_as_registry_str(hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].firmware),
     )
 
+    hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTRY].device_registry_id = (
+        gateway_device_entry.id
+    )
+
     await hass.config_entries.async_forward_entry_setups(
         entry, hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS].keys()
     )
