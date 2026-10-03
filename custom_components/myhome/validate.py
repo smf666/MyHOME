@@ -442,12 +442,12 @@ climate_schema = MyHomeDeviceSchema(
 gateway_schema = Schema(
     {
         Required(CONF_MAC): MacAddress(),
-        Optional(LIGHT): light_schema,
-        Optional(SWITCH): switch_schema,
-        Optional(COVER): cover_schema,
-        Optional(BINARY_SENSOR): binary_sensor_schema,
-        Optional(SENSOR): sensor_schema,
-        Optional(CLIMATE): climate_schema,
+        Optional(LIGHT): lambda v: light_schema(v),
+        Optional(SWITCH): lambda v: switch_schema(v),
+        Optional(COVER): lambda v: cover_schema(v),
+        Optional(BINARY_SENSOR): lambda v: binary_sensor_schema(v),
+        Optional(SENSOR): lambda v: sensor_schema(v),
+        Optional(CLIMATE): lambda v: climate_schema(v),
     }
 )
 
