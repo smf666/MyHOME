@@ -47,6 +47,10 @@ class MyHOMEEntity(Entity):
             "model": self._model,
             "via_device": (DOMAIN, self._gateway_handler.unique_id),
         }
+        if self._gateway_handler.device_registry_id is not None:
+             self._attr_device_info["via_device_id"] = (
+                 self._gateway_handler.device_registry_id
+             )
 
     async def async_added_to_hass(self):
         """When entity is added to hass."""
