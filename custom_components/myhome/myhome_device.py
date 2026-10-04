@@ -45,7 +45,6 @@ class MyHOMEEntity(Entity):
             "name": name,
             "manufacturer": self._manufacturer,
             "model": self._model,
-            "via_device": (DOMAIN, self._gateway_handler.unique_id),
         }
         if self._gateway_handler.device_registry_id is not None:
              self._attr_device_info["via_device_id"] = (
