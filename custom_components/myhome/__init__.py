@@ -82,6 +82,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             entry.data[CONF_MAC]
         ]
     else:
+        LOGGER.debug("MAC from entry: %s", entry.data[CONF_MAC])
+        LOGGER.debug("MAC keys from YAML: %s", list(_validated_config.keys()))
         return False
 
     # Migrating the config entry's unique_id if it was not formated to the recommended hass standard
@@ -142,7 +144,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         sw_version=_as_registry_str(hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].firmware),
     )
 
-    hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTRY].device_registry_id = (
+    hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].device_registry_id = (
         gateway_device_entry.id
     )
 
