@@ -1,5 +1,6 @@
 """Validator for the MyHome configuration file."""
 import re
+from .gateway import ha_format_mac
 
 from voluptuous import (
     Schema,
@@ -226,31 +227,37 @@ class MyHomeDeviceSchema(Schema):
     def __call__(self, data):
         data = super().__call__(data)
         _rekeyed_data = {}
+        for gateway in data:
+            # Normaliser la MAC au format HA (minuscules, séparateurs ":")
+            # pour que la clé corresponde à entry.data[CONF_MAC]
+            _mac = ha_format_mac(
+                re.sub("[.:-]", "", str(data[gateway][CONF_MAC])).upper()
+            )
 
-        for device in data:
-            data[device][CONF_ENTITIES] = {}
-            if CONF_WHERE in data[device]:
-                _new_key = (
-                    f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}#4#{data[device][CONF_BUS_INTERFACE]}"
-                    if CONF_BUS_INTERFACE in data[device] and data[device][CONF_BUS_INTERFACE] is not None and data[device][CONF_BUS_INTERFACE] != "#9" 
-                    else f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}"
-                )
-                _rekeyed_data[_new_key] = data[device]
-            elif CONF_ZONE in data[device]:
-                _new_key = f"{data[device][CONF_WHO]}-{data[device][CONF_ZONE]}"
-                data[device][CONF_ZONE] = f"#0#{data[device][CONF_ZONE]}" if data[device][CONF_CENTRAL] and data[device][CONF_ZONE] != "#0" else data[device][CONF_ZONE]
-                data[device][CONF_NAME] = (
-                    data[device][CONF_NAME] if CONF_NAME in data[device] else "Central unit" if data[device][CONF_ZONE].startswith("#0") else f"Zone {data[device][CONF_ZONE]}"
-                )
-                _rekeyed_data[_new_key] = data[device]
-            if CONF_DEVICE_MODEL not in data[device]:
-                data[device][CONF_DEVICE_MODEL] = None
-            if CONF_ICON not in data[device]:
-                data[device][CONF_ICON] = None
-            if CONF_ICON_ON not in data[device]:
-                data[device][CONF_ICON_ON] = None
-            if CONF_ENTITY_NAME not in data[device]:
-                data[device][CONF_ENTITY_NAME] = None
+            _rekeyed_data[_mac] = {}
+            _rekeyed_data[_mac][CONF_PLATFORMS] = {}
+            for platform in data[gateway]:
+                if platform != CONF_MAC:
+                    _rekeyed_data[_mac][CONF_PLATFORMS][platform] = data[gateway][platform]
+
+            if (
+                (LIGHT in _rekeyed_data[_mac][CONF_PLATFORMS])
+                or (SWITCH in _rekeyed_data[_mac][CONF_PLATFORMS])
+                or (COVER in _rekeyed_data[_mac][CONF_PLATFORMS])
+            ):
+                _rekeyed_data[_mac][CONF_PLATFORMS][BUTTON] = {}
+                if LIGHT in _rekeyed_data[_mac][CONF_PLATFORMS]:
+                    for key, value in _rekeyed_data[_mac][CONF_PLATFORMS][LIGHT].items():
+                        if not value[CONF_WHERE].startswith("#"):
+                            _rekeyed_data[_mac][CONF_PLATFORMS][BUTTON][key] = value
+                if SWITCH in _rekeyed_data[_mac][CONF_PLATFORMS]:
+                    for key, value in _rekeyed_data[_mac][CONF_PLATFORMS][SWITCH].items():
+                        if not value[CONF_WHERE].startswith("#"):
+                            _rekeyed_data[_mac][CONF_PLATFORMS][BUTTON][key] = value
+                if COVER in _rekeyed_data[_mac][CONF_PLATFORMS]:
+                    for key, value in _rekeyed_data[_mac][CONF_PLATFORMS][BUTTON].items():
+                        if not value[CONF_WHERE].startswith("#"):
+                            _rekeyed_data[_mac][CONF_PLATFORMS][BUTTON][key] = value
 
         return _rekeyed_data
 
