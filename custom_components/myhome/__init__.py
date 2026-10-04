@@ -77,14 +77,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         LOGGER.error(f"Configuration file '{_config_file_path}' is not present!")
         return False
 
-    if entry.data[CONF_MAC] in _validated_config:
-        hass.data[DOMAIN][entry.data[CONF_MAC]] = _validated_config[
-            entry.data[CONF_MAC]
-        ]
+    _entry_mac = entry.data[CONF_MAC]
+    # Recherche insensible à la casse et au format de la MAC
+    _config_mac = next(
+        (
+            mac
+            for mac in _validated_config
+            if str(mac).lower() == str(_entry_mac).lower()
+        ),
+        None,
+    )
+
+    if _config_mac is not None:
+        hass.data[DOMAIN][_entry_mac] = _validated_config[_config_mac]
     else:
-        LOGGER.debug("MAC from entry: %s", entry.data[CONF_MAC])
-        LOGGER.debug("MAC keys from YAML: %s", list(_validated_config.keys()))
-        return False
+        LOGGER.error(
+            "Gateway MAC %s not found in myhome.yaml (keys found: %s)",
+            _entry_mac,
+            list(_validated_config.keys()),
+        )
+        return False  
 
     # Migrating the config entry's unique_id if it was not formated to the recommended hass standard
     if entry.unique_id != dr.format_mac(entry.unique_id):
@@ -174,6 +186,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     ]
 
     configured_entities = []
+    
+    _gateway_mac = hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_ENTITY].mac
 
     for _platform in hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS].keys():
         for _device in hass.data[DOMAIN][entry.data[CONF_MAC]][CONF_PLATFORMS][
@@ -184,12 +198,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             ][_device][CONF_ENTITIES]:
                 if _entity_name != _platform:
                     configured_entities.append(
-                        f"{entry.data[CONF_MAC]}-{_device}-{_entity_name}"
-                    )  # extrapolating _attr_unique_id out of the entity's place in the config data structure
+                        f"{_gateway_mac}-{_device}-{_entity_name}"
+                    )
                 else:
                     configured_entities.append(
-                        f"{entry.data[CONF_MAC]}-{_device}"
-                    )  # extrapolating _attr_unique_id out of the entity's place in the config data structure
+                        f"{_gateway_mac}-{_device}"
+                    )
 
     for entity_entry in entity_entries:
         if entity_entry.unique_id in configured_entities:
