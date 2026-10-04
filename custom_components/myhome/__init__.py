@@ -212,6 +212,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             continue
         entities_to_be_removed.append(entity_entry.entity_id)
 
+    if entities_to_be_removed:
+        LOGGER.warning(
+            "Pruning %s entities not found in configuration: %s",
+            len(entities_to_be_removed),
+            entities_to_be_removed,
+        )
+    
     for enity_id in entities_to_be_removed:
         entity_registry.async_remove(enity_id)
 
