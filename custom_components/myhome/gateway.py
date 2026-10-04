@@ -425,7 +425,7 @@ class MyHOMEGatewayHandler:
             )
             task = await self.send_buffer.get()
             LOGGER.debug(
-                "%s %s Message `%s` was successfully unqueued by worker %s.",
+                "%s Message `%s` was successfully unqueued by worker %s.",
                 self.log_id,
                 task["message"],
                 worker_id,
