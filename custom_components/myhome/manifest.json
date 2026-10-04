@@ -2,7 +2,7 @@
   "domain": "myhome",
   "integration_type": "hub",
   "name": "MyHOME",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "config_flow": true,
   "documentation": "https://github.com/smf666/MyHOME",
   "integration_type": "hub",
