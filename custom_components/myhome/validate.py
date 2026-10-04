@@ -1,6 +1,6 @@
 """Validator for the MyHome configuration file."""
 import re
-from .gateway import ha_format_mac
+from homeassistant.helpers.device_registry import format_mac as ha_format_mac
 
 from voluptuous import (
     Schema,
