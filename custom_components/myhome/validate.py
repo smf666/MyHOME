@@ -234,9 +234,12 @@ class MyHomeDeviceSchema(Schema):
         for device in data:
             data[device][CONF_ENTITIES] = {}
             if CONF_WHERE in data[device]:
+                # Zigbee devices (interface "#9") must NOT get a "#4#" bus-interface
+                # suffix: OWNd reports their entity as "<who>-<where>" only, and the
+                # key must match for the event dispatch to find the entity.
                 _new_key = (
                     f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}#4#{data[device][CONF_BUS_INTERFACE]}"
-                    if CONF_BUS_INTERFACE in data[device] and data[device][CONF_BUS_INTERFACE] is not None
+                    if CONF_BUS_INTERFACE in data[device] and data[device][CONF_BUS_INTERFACE] is not None and data[device][CONF_BUS_INTERFACE] != "#9"
                     else f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}"
                 )
                 _rekeyed_data[_new_key] = data[device]
@@ -290,9 +293,12 @@ class MyHomeSensorSchema(Schema):
                     elif data[device][CONF_WHO] != "1":
                         raise Invalid("invalid sensor class for selected who")
             if CONF_WHERE in data[device]:
+                # Zigbee devices (interface "#9") must NOT get a "#4#" bus-interface
+                # suffix: OWNd reports their entity as "<who>-<where>" only, and the
+                # key must match for the event dispatch to find the entity.
                 _new_key = (
                     f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}#4#{data[device][CONF_BUS_INTERFACE]}"
-                    if CONF_BUS_INTERFACE in data[device] and data[device][CONF_BUS_INTERFACE] is not None
+                    if CONF_BUS_INTERFACE in data[device] and data[device][CONF_BUS_INTERFACE] is not None and data[device][CONF_BUS_INTERFACE] != "#9"
                     else f"{data[device][CONF_WHO]}-{data[device][CONF_WHERE]}"
                 )
                 _rekeyed_data[_new_key] = data[device]
