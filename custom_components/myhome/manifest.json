@@ -10,8 +10,7 @@
   "issue_tracker": "https://github.com/smf666/MyHOME/issues",
   "requirements": [
     "OWNd2==0.7.89",
-    "async_timeout",
-    "pyserial-asyncio"
+    "serialx"
   ],
   "ssdp": [
     {
