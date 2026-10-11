@@ -6,9 +6,7 @@ import re
 import os
 from typing import Dict, Optional
 import serial.tools.list_ports
-import serial_asyncio
 
-import async_timeout
 from voluptuous import (
     Schema,
     Required,
@@ -18,11 +16,6 @@ from voluptuous import (
     Range,
 )
 
-# HA 2026.10 replaced voluptuous with probatio; its compatibility shim may not
-# export IsFile/UNDEFINED, which broke the import of this module
-# ("Platform myhome.config_flow not found"). Neither symbol is needed:
-# IsFile was unused and the single UNDEFINED default has been dropped.
-UNDEFINED = None
 from homeassistant.config_entries import (
     CONN_CLASS_LOCAL_PUSH,
     ConfigEntry,
@@ -119,7 +112,7 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
             return await self.async_step_test_connection()
 
         try:
-            with async_timeout.timeout(5):
+            with asyncio.timeout(5):
                 local_gateways = await find_gateways()
         except asyncio.TimeoutError:
             return self.async_abort(reason="discovery_timeout")
