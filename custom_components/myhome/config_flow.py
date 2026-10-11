@@ -16,9 +16,13 @@ from voluptuous import (
     All,
     In,
     Range,
-    IsFile,
-    UNDEFINED,
 )
+
+# HA 2026.10 replaced voluptuous with probatio; its compatibility shim may not
+# export IsFile/UNDEFINED, which broke the import of this module
+# ("Platform myhome.config_flow not found"). Neither symbol is needed:
+# IsFile was unused and the single UNDEFINED default has been dropped.
+UNDEFINED = None
 from homeassistant.config_entries import (
     CONN_CLASS_LOCAL_PUSH,
     ConfigEntry,
@@ -190,7 +194,7 @@ class MyhomeFlowHandler(ConfigFlow, domain=DOMAIN):
 
         schema = {
             Required(
-                CONF_DEVICE_PATH, default=UNDEFINED
+                CONF_DEVICE_PATH
             ): str
         }
 
